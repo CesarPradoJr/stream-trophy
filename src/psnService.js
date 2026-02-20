@@ -1,48 +1,100 @@
 const {
-  exchangeNpssoForAccessCode,
-  exchangeAccessCodeForAuthTokens,
+  exchangeNpssoForCode,
+  exchangeCodeForAccessToken,
   getUserTitles,
-  getUserTrophiesEarnedForTitle
+  getUserTrophiesEarnedForTitle,
+  getTitleTrophies
 } = require("psn-api");
 
-let authTokens;
-let accountId;
+let authorization = null;
 
-async function authenticate(npsso) {
-  const accessCode = await exchangeNpssoForAccessCode(npsso);
-  const tokens = await exchangeAccessCodeForAuthTokens(accessCode);
+async function authenticate() {
+  const npsso = process.env.NPSSO;
+  if (!npsso) throw new Error("NPSSO não definido no .env");
 
-  authTokens = tokens;
-  accountId = tokens.accountId;
+  const accessCode = await exchangeNpssoForCode(npsso);
+  authorization = await exchangeCodeForAccessToken(accessCode);
 
-  if (!authTokens || !accountId) {
-    throw new Error("Falha ao obter tokens da PSN.");
-  }
+  console.log("✅ Autenticado na PSN!");
+  return authorization;
 }
 
 async function getCurrentGame() {
-  if (!authTokens) throw new Error("Não autenticado.");
+  if (!authorization?.accessToken) {
+    throw new Error("Não autenticado na PSN");
+  }
 
-  const titles = await getUserTitles(
-    { accessToken: authTokens.accessToken },
-    accountId
+  const userTitles = await getUserTitles(
+    { accessToken: authorization.accessToken },
+    "me"
   );
 
-  return titles.trophyTitles[0];
+  if (!userTitles?.trophyTitles?.length) {
+    return null;
+  }
+
+  const sorted = userTitles.trophyTitles.sort(
+    (a, b) =>
+      new Date(b.lastUpdatedDateTime) - new Date(a.lastUpdatedDateTime)
+  );
+
+  const lastPlayed = sorted[0];
+
+  const trophies = await getTrophiesForGame(lastPlayed.npCommunicationId);
+
+return {
+  npCommunicationId: lastPlayed.npCommunicationId,
+  title: lastPlayed.trophyTitleName,
+  progress: lastPlayed.progress,
+  earned: lastPlayed.earnedTrophies,
+  total: lastPlayed.definedTrophies,
+  trophies
+};
 }
 
 async function getTrophiesForGame(npCommunicationId) {
-  if (!authTokens) throw new Error("Não autenticado.");
+  if (!authorization?.accessToken) {
+    throw new Error("Não autenticado na PSN");
+  }
 
-  return await getUserTrophiesEarnedForTitle(
-    { accessToken: authTokens.accessToken },
-    accountId,
-    npCommunicationId
+  const auth = { accessToken: authorization.accessToken };
+
+  const trophyGroups = await getTitleTrophies(auth, npCommunicationId, "all", {
+    npServiceName: "trophy"
+  });
+
+  const earned = await getUserTrophiesEarnedForTitle(
+    auth,
+    "me",
+    npCommunicationId,
+    "all",
+    { npServiceName: "trophy" }
   );
+
+  const allTrophies =
+    trophyGroups?.trophyGroups?.flatMap(group => group.trophies) || [];
+
+  const earnedList = earned?.trophies || [];
+
+  const trophies = allTrophies.map(trophy => {
+    const earnedData = earnedList.find(
+      t => t.trophyId === trophy.trophyId
+    );
+
+    return {
+      id: trophy.trophyId,
+      name: trophy.trophyName,
+      type: trophy.trophyType.toLowerCase(),
+      earned: earnedData?.earned || false,
+      earnedDate: earnedData?.earnedDateTime || null
+    };
+  });
+
+  return trophies;
 }
+
 
 module.exports = {
   authenticate,
-  getCurrentGame,
-  getTrophiesForGame
+  getCurrentGame
 };
