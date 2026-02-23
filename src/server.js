@@ -8,6 +8,7 @@ const {
   authenticate,
   getCurrentGame
 } = require("./psnService");
+const { platform } = require("os");
 
 const app = express();
 const PORT = 3000;
@@ -18,7 +19,6 @@ app.use(express.static("public"));
 
 let tokens = null;
 let lastGame = null;
-let lastProgress = null;
 let earnedTrophiesCache = new Set();
 let clients = [];
 let currentCover = null;
@@ -33,30 +33,26 @@ async function init() {
     console.log("✅ PSN pronta");
 
     const game = await getCurrentGame();
+
     if (game) {
-  lastGame = game;
-  lastProgress = game.progress;
+      lastGame = game;
 
-  console.log("🎮 Jogo inicial:", game.title);
+      currentCover = await getGameCover(
+        game.title,
+        game.trophyTitlePlatform
+      );
 
-  // 🔥 BUSCA A CAPA AQUI
-  currentCover = await getGameCover(game.title);
-  console.log("🖼️ Capa inicial carregada:", currentCover);
+      game.trophies.forEach(trophy => {
+        if (trophy.earned && trophy.earnedDateTime) {
+          earnedTrophiesCache.add(
+            `${trophy.id}_${trophy.earnedDateTime}`
+          );
+        }
+      });
 
-  // Inicializa cache
-  game.trophies.forEach(trophy => {
-    if (trophy.earned) {
-      earnedTrophiesCache.add(trophy.id);
+      const payload = buildProgressPayload(game);
+      if (payload) broadcast(payload);
     }
-  });
-
-  const payload = buildProgressPayload(game);
-  if (payload) {
-    broadcast(payload);
-    console.log("📊 Progresso inicial enviado:", payload.percentage + "%");
-  }
-}
-
 
   } catch (err) {
     console.error("❌ Erro na autenticação:", err.message);
@@ -90,8 +86,6 @@ wss.on("connection", (ws) => {
 });
 
 // -----------------------------
-// Broadcast
-// -----------------------------
 function broadcast(data) {
   clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
@@ -101,17 +95,13 @@ function broadcast(data) {
 }
 
 // -----------------------------
-// Payload progresso
-// -----------------------------
 function buildProgressPayload(game) {
-  
   if (!game) return null;
-
-  console.log("🎮 Capa enviada:", currentCover);
 
   return {
     type: "progress",
     game: game.title,
+    platform: game.trophyTitlePlatform,
     cover: currentCover,
     bronze: game.earned.bronze || 0,
     silver: game.earned.silver || 0,
@@ -123,68 +113,85 @@ function buildProgressPayload(game) {
     totalPlatinum: game.total.platinum || 0,
     percentage: game.progress || 0
   };
-  
-
 }
 
 // -----------------------------
-// LOOP INTELIGENTE — 30s
+// LOOP DE MONITORAMENTO (10s)
 // -----------------------------
 setInterval(async () => {
   if (!tokens) return;
 
   try {
     const game = await getCurrentGame();
+
     if (!game) return;
 
     // 🎮 Detecta troca de jogo
     if (!lastGame || game.npCommunicationId !== lastGame.npCommunicationId) {
-  console.log("🎮 Jogo mudou:", game.title);
 
-  earnedTrophiesCache.clear();
-  lastProgress = null;
+      console.log("🎮 Jogo mudou:", game.title);
 
-  currentCover = await getGameCover(game.title);
-
-  game.trophies.forEach(trophy => {
-    if (trophy.earned) {
-      earnedTrophiesCache.add(trophy.id);
-    }
-  });
-}
-
-    // 📊 Atualiza progresso sempre
-    const progressPayload = buildProgressPayload(game);
-    broadcast(progressPayload);
-
-    // 🧠 Só verifica troféu se progresso mudou
-    if (game.progress !== lastProgress) {
-
-      console.log("📈 Progresso mudou! Verificando troféus...");
-
-      const newTrophies = [];
+      earnedTrophiesCache.clear();
+      currentCover = await getGameCover(
+        game.title,
+        game.trophyTitlePlatform
+      );
 
       game.trophies.forEach(trophy => {
-        if (trophy.earned && !earnedTrophiesCache.has(trophy.id)) {
-          earnedTrophiesCache.add(trophy.id);
-          newTrophies.push(trophy);
+        if (trophy.earned && trophy.earnedDateTime) {
+          earnedTrophiesCache.add(
+            `${trophy.id}_${trophy.earnedDateTime}`
+          );
+        }
+      });
+    }
+
+    // 📊 Sempre atualiza progresso
+    broadcast(buildProgressPayload(game));
+
+    // 🏆 Detecta novos troféus
+    const newTrophies = [];
+
+    game.trophies.forEach(trophy => {
+      if (
+        trophy.earned &&
+        trophy.earnedDateTime &&
+        !earnedTrophiesCache.has(
+          `${trophy.id}_${trophy.earnedDateTime}`
+        )
+      ) {
+        earnedTrophiesCache.add(
+          `${trophy.id}_${trophy.earnedDateTime}`
+        );
+        newTrophies.push(trophy);
+      }
+    });
+
+    // Ordena por data
+    newTrophies.sort(
+      (a, b) =>
+        new Date(a.earnedDateTime) - new Date(b.earnedDateTime)
+    );
+
+    newTrophies.forEach(trophy => {
+      broadcast({
+        type: "NEW_TROPHY",
+        data: {
+          game: game.title,
+          platform: game.trophyTitlePlatform,
+          cover: currentCover,
+          id: trophy.id,
+          name: trophy.name,
+          description: trophy.description,
+          type: trophy.type,
+          rarity: trophy.rarity,
+          icon: trophy.icon,
+          earnedDateTime: trophy.earnedDateTime
         }
       });
 
-      newTrophies.forEach(trophy => {
-        broadcast({
-          type: "NEW_TROPHY",
-          data: {
-            game: game.title,
-            ...trophy
-          }
-        });
-
-        console.log("🏆 Novo troféu:", trophy.name);
-      });
-
-      lastProgress = game.progress;
-    }
+      console.log("🏆 Novo troféu enviado:", trophy.name);
+    });
 
     lastGame = game;
 
@@ -192,33 +199,44 @@ setInterval(async () => {
     console.error("Erro no monitor:", error.message);
   }
 
-}, 30000);
+}, 10000);
 
-async function getGameCover(gameName) {
+
+// -----------------------------
+async function getGameCover(gameName, platform) {
   try {
+    if (coverCache.has(gameName + platform)) {
+      return coverCache.get(gameName + platform);
+    }
 
-    // Remove símbolos tipo ™ ® ©
     const cleanName = gameName.replace(/[™®©]/g, "").trim();
+    console.log("Buscando capa para:", gameName, "Plataforma:", platform);
+    // 🔥 Converte PSN → RAWG
+    let rawgPlatformId = null;
 
-    console.log("🔎 Buscando capa para:", cleanName);
+    if (platform === "PS4") rawgPlatformId = 18;
+    if (platform === "PS5") rawgPlatformId = 187;
 
-    const response = await axios.get("https://api.rawg.io/api/games", {
-      params: {
-        key: process.env.RAWG_API_KEY,
-        search: cleanName, 
-        dates: `${new Date().getFullYear()}-01-01,${new Date().getFullYear()}-12-31`,
-        page_size: 1
+    const response = await axios.get(
+      "https://api.rawg.io/api/games",
+      {
+        params: {
+          key: process.env.RAWG_API_KEY,
+          search: cleanName,
+          page_size: 1,
+          platforms: rawgPlatformId || undefined
+        }
       }
-    });
+    );
 
     const results = response.data.results;
 
     if (results && results.length > 0) {
-      console.log("✅ Capa encontrada:", results[0].background_image);
-      return results[0].background_image;
+      const cover = results[0].background_image;
+      coverCache.set(gameName + platform, cover);
+      return cover;
     }
 
-    console.log("⚠️ Nenhuma capa encontrada");
     return null;
 
   } catch (error) {
@@ -227,5 +245,4 @@ async function getGameCover(gameName) {
   }
 }
 
-// -----------------------------
 init();

@@ -29,9 +29,7 @@ async function getCurrentGame() {
     "me"
   );
 
-  if (!userTitles?.trophyTitles?.length) {
-    return null;
-  }
+  if (!userTitles?.trophyTitles?.length) return null;
 
   const sorted = userTitles.trophyTitles.sort(
     (a, b) =>
@@ -42,14 +40,15 @@ async function getCurrentGame() {
 
   const trophies = await getTrophiesForGame(lastPlayed.npCommunicationId);
 
-return {
-  npCommunicationId: lastPlayed.npCommunicationId,
-  title: lastPlayed.trophyTitleName,
-  progress: lastPlayed.progress,
-  earned: lastPlayed.earnedTrophies,
-  total: lastPlayed.definedTrophies,
-  trophies
-};
+  return {
+    npCommunicationId: lastPlayed.npCommunicationId,
+    title: lastPlayed.trophyTitleName,
+    trophyTitlePlatform: lastPlayed.trophyTitlePlatform,
+    progress: lastPlayed.progress,
+    earned: lastPlayed.earnedTrophies,
+    total: lastPlayed.definedTrophies,
+    trophies
+  };
 }
 
 async function getTrophiesForGame(npCommunicationId) {
@@ -84,15 +83,17 @@ async function getTrophiesForGame(npCommunicationId) {
     return {
       id: trophy.trophyId,
       name: trophy.trophyName,
+      description: trophy.trophyDetail || "",
+      icon: trophy.trophyIconUrl || "",
       type: trophy.trophyType.toLowerCase(),
+      rarity: trophy.trophyRare || null,
       earned: earnedData?.earned || false,
-      earnedDate: earnedData?.earnedDateTime || null
+      earnedDateTime: earnedData?.earnedDateTime || null
     };
   });
 
   return trophies;
 }
-
 
 module.exports = {
   authenticate,

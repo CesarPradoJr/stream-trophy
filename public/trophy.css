@@ -1,0 +1,149 @@
+/* ============================= */
+/* RESET                         */
+/* ============================= */
+
+body {
+ margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+
+
+/* ============================= */
+/* POPUP PRINCIPAL               */
+/* ============================= */
+
+.trophy-popup {
+  width: 350px;
+  padding: 16px;
+  border-radius: 12px;
+  overflow: hidden;
+
+  background-size: cover;
+  background-position: center;
+
+  backdrop-filter: blur(12px);
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  transform: translateX(120%);
+  opacity: 0;
+  transition: all 0.5s ease;
+
+  margin-top: 10px;
+}
+
+.trophy-popup.show {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+
+.trophy-popup::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(5px);
+  border-radius: 12px;
+
+  z-index: 0;
+}
+
+.trophy-popup * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ============================= */
+/* ÍCONE                         */
+/* ============================= */
+
+.trophy-icon {
+  width: 70px;
+  height: 70px;
+  border-radius: 14px;
+  object-fit: cover;
+  background: #222;
+}
+
+/* ============================= */
+/* INFORMAÇÕES                   */
+/* ============================= */
+
+.trophy-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.trophy-name {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: white;
+}
+
+.trophy-rarity {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+/* ============================= */
+/* CORES POR TIPO                */
+/* ============================= */
+
+.trophy-popup.bronze {
+  border-left: 6px solid #cd7f32;
+}
+
+.trophy-popup.silver {
+  border-left: 6px solid #c0c0c0;
+}
+
+.trophy-popup.gold {
+  border-left: 6px solid #ffd700;
+}
+
+.trophy-popup.platinum {
+  border-left: 6px solid #00e5ff;
+}
+
+/* ============================= */
+/* ESCONDIDO                     */
+/* ============================= */
+
+.hidden {
+  display: none;
+}
+
+.game-cover {
+  width: 60px;
+  height: 80px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.trophy-rarity-icon {
+  width: 22px;
+  height: 22px;
+  margin-top: 6px;
+}
+
+#trophy-container {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  align-items: flex-end;
+  pointer-events: none;
+}

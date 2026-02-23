@@ -1,37 +1,69 @@
+const popup = document.getElementById("trophy-popup");
+const icon = document.getElementById("trophy-icon");
+const nameEl = document.getElementById("trophy-name");
+const coverEl = document.getElementById("game-cover");
+const rarityIcon = document.getElementById("trophy-rarity-icon");
 const socket = new WebSocket("ws://localhost:3000");
 
-const popup = document.getElementById("trophy-popup");
-const trophyName = document.getElementById("trophy-name");
-const trophyGame = document.getElementById("trophy-game");
-
+// Escuta mensagens do servidor
 socket.onmessage = (event) => {
-  const data = JSON.parse(event.data);
+  const message = JSON.parse(event.data);
 
-  if (data.type === "NEW_TROPHY") {
-
-    const trophy = data.data;
-
-    trophyName.innerText = trophy.name;
-    trophyGame.innerText = trophy.game;
-
-    // remove classes antigas
-    popup.classList.remove("bronze", "silver", "gold", "platinum");
-
-    // adiciona raridade
-    if (trophy.type) {
-      popup.classList.add(trophy.type);
-    }
-
-    popup.classList.remove("hidden");
-    popup.classList.add("show");
-
-    setTimeout(() => {
-      popup.classList.remove("show");
-      popup.classList.add("hidden");
-    }, 6000);
+  if (message.type === "NEW_TROPHY") {
+    showTrophy(message.data);
   }
 };
 
-socket.onopen = () => {
-  console.log("📡 Trophy overlay conectada");
-};
+function showTrophy(trophy) {
+
+  const rarityIcons = {
+    bronze: "icons/bronze.png",
+    silver: "icons/silver.png",
+    gold: "icons/gold.png",
+    platinum: "icons/platinum.png"
+  };
+
+  const popup = document.createElement("div");
+  popup.classList.add("trophy-popup", trophy.type.toLowerCase());
+
+  popup.style.backgroundImage = `url('${trophy.cover}')`;
+
+  popup.innerHTML = `
+    <img class="trophy-icon" src="${trophy.icon}" />
+    <div class="trophy-info">
+      <div class="trophy-name">${trophy.name}</div>
+      <img class="trophy-rarity-icon" src="${rarityIcons[trophy.type]}" />
+    </div>
+  `;
+
+  document.body.appendChild(popup);
+
+  setTimeout(() => {
+    popup.classList.add("show");
+  }, 50);
+
+  setTimeout(() => {
+    popup.classList.remove("show");
+    setTimeout(() => popup.remove(), 600);
+  }, 5000);
+}
+
+setTimeout(() => {
+  showTrophy({
+    name: "Mestre Lombax",
+    type: "platinum",
+    icon: "https://i.imgur.com/4AiXzf8.jpeg",
+    cover: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1tmu.jpg"
+  });
+
+  // segundo troféu para testar múltiplos
+  setTimeout(() => {
+    showTrophy({
+      name: "Explorador Galáctico",
+      type: "gold",
+      icon: "https://i.imgur.com/4AiXzf8.jpeg",
+      cover: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1tmu.jpg"
+    });
+  }, 800);
+
+}, 2000);

@@ -5,19 +5,39 @@ socket.onmessage = (event) => {
 
   if (data.type === "progress") {
 
-    // 🎮 Aplica a imagem SOMENTE na overlay
+    const container = document.querySelector(".progress-container");
+
+    // 🎮 Atualiza capa
     if (data.cover) {
-      const container = document.querySelector(".progress-container");
       container.style.backgroundImage = `url('${data.cover}')`;
     }
 
+    // Atualiza textos
     document.getElementById("game-name").innerText = data.game;
-    document.getElementById("percentage").innerText = data.percentage + "%";
-    document.getElementById("progress-fill").style.width = data.percentage + "%";
-
     document.getElementById("bronze-count").innerText = data.bronze;
     document.getElementById("silver-count").innerText = data.silver;
     document.getElementById("gold-count").innerText = data.gold;
     document.getElementById("platinum-count").innerText = data.platinum;
+
+    animateBar(data.percentage);
+    animatePercentage(data.percentage);
+
+    // Glow especial quando 100%
+    const fill = document.getElementById("progress-fill");
+    if (data.percentage === 100) {
+      fill.classList.add("complete");
+    } else {
+      fill.classList.remove("complete");
+    }
   }
 };
+
+function animateBar(value) {
+  const fill = document.getElementById("progress-fill");
+  fill.style.width = value + "%";
+}
+
+function animatePercentage(value) {
+  const el = document.getElementById("percentage");
+  el.innerText = value + "%";
+}
