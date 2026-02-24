@@ -125,6 +125,7 @@ setInterval(async () => {
     const game = await getCurrentGame();
 
     if (!game) return;
+    console.log("🎯 Trophies recebidos:", game.trophies.length);
 
     // 🎮 Detecta troca de jogo
     if (!lastGame || game.npCommunicationId !== lastGame.npCommunicationId) {
@@ -139,6 +140,7 @@ setInterval(async () => {
 
       game.trophies.forEach(trophy => {
         if (trophy.earned && trophy.earnedDateTime) {
+          console.log("✔ Já ganho:", trophy.name, trophy.earnedDateTime);
           earnedTrophiesCache.add(
             `${trophy.id}_${trophy.earnedDateTime}`
           );
