@@ -28,11 +28,27 @@ Sistema para integração com a PlayStation Network (PSN) com objetivo de captur
 ```
 stream-trophy/
 │
+├── public/
+│   ├── icons/
+│   |   ├── Bronze.png
+│   |   ├── Gold.png
+│   |   ├── Silver.png
+│   |   ├── Platinum.png
+│   ├── progress.html
+│   ├── progress.css
+│   ├── progress.js
+│   ├── trophy.html
+│   ├── trophy.css
+│   ├── trophy.js
+│
 ├── src/
 │   ├── server.js
 │   ├── psnService.js
+│   ├── route.js
 │
 ├── .env
+├── cache.json
+├── .gitignore
 ├── package.json
 └── README.md
 ```
