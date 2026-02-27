@@ -123,9 +123,3 @@ O objetivo do **Stream Trophy** é permitir que criadores de conteúdo exibam se
 ## 👨‍💻 Autor
 
 Desenvolvido por **César Prado**
-
----
-
-## 📜 Licença
-
-Este projeto está sob a licença MIT.
