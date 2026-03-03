@@ -33,18 +33,18 @@ stream-trophy/
 │   |   ├── Bronze.png
 │   |   ├── Gold.png
 │   |   ├── Silver.png
-│   |   ├── Platinum.png
+│   |   └── Platinum.png
 │   ├── progress.html
 │   ├── progress.css
 │   ├── progress.js
 │   ├── trophy.html
 │   ├── trophy.css
-│   ├── trophy.js
+│   └── trophy.js
 │
 ├── src/
 │   ├── server.js
 │   ├── psnService.js
-│   ├── route.js
+│   └── route.js
 │
 ├── .env
 ├── cache.json
